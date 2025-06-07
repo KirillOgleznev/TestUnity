@@ -265,5 +265,29 @@ namespace Unity.FPS.Gameplay
             Gizmos.color = RadiusColor;
             Gizmos.DrawSphere(transform.position, Radius);
         }
+
+        public void LaunchInDirection(Vector3 direction)
+        {
+            // Поворачиваем снаряд
+            transform.forward = direction.normalized;
+
+            // Устанавливаем скорость
+            m_Velocity = direction.normalized * Speed;
+
+            // Инициализируем если еще не было
+            if (m_IgnoredColliders == null)
+            {
+                m_ShootTime = Time.time;
+                m_LastRootPosition = Root.position;
+                m_IgnoredColliders = new List<Collider>();
+
+                // Игнорируем коллайдеры владельца если есть
+                if (m_ProjectileBase != null && m_ProjectileBase.Owner != null)
+                {
+                    Collider[] ownerColliders = m_ProjectileBase.Owner.GetComponentsInChildren<Collider>();
+                    m_IgnoredColliders.AddRange(ownerColliders);
+                }
+            }
+        }
     }
 }
