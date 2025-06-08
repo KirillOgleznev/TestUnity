@@ -1096,7 +1096,7 @@ MonoBehaviour:
   enemyLayerMask:
     serializedVersion: 2
     m_Bits: 4294967295
-  enemyOffsetDistance: 2
+  enemyOffsetDistance: 0.5
   showDebugRay: 0
 --- !u!1001 &614078236
 PrefabInstance:
@@ -7327,7 +7327,7 @@ Camera:
     type: 3}
   m_PrefabInstance: {fileID: 1221041499}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &1019682968
+--- !u!114 &1019682973
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -7341,13 +7341,24 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   target: {fileID: 1762682271}
   distance: 5
-  sensitivity: 0.3
-  minY: -80
+  sensitivity: 0.5
+  minY: -103.2
   maxY: 80
   invertY: 1
   offset: {x: 0, y: 0, z: 0}
   height: 1.5
-  shoulderOffset: {x: 0, y: -1.72, z: 1.31}
+  shoulderOffset: {x: 0, y: 0, z: 0}
+  collisionLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  collisionRadius: 0.2
+  minDistance: 0.46
+  collisionBuffer: 0.2
+  raycastStartOffset: 0.5
+  distanceSmoothSpeed: 8
+  distanceReturnSpeed: 3
+  crosshairDistance: 100
+  showDebug: 0
 --- !u!1 &1028513131
 GameObject:
   m_ObjectHideFlags: 0
@@ -7832,7 +7843,7 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 8944336655422409498, guid: f6d148d888ffbf54b9afe9936dfaec1f,
         type: 3}
       insertIndex: -1
-      addedObject: {fileID: 1019682968}
+      addedObject: {fileID: 1019682973}
   m_SourcePrefab: {fileID: 100100000, guid: f6d148d888ffbf54b9afe9936dfaec1f, type: 3}
 --- !u!1 &1333157944
 GameObject:
@@ -9355,7 +9366,7 @@ MonoBehaviour:
   slidableLayers:
     serializedVersion: 2
     m_Bits: 4294967295
-  slideStartDelay: 0.1
+  slideStartDelay: 0.3
   groundedGraceTime: 0.15
   groundCheckDistance: 0.1
   airJumpSlideDisableTime: 0.5

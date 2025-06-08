@@ -24,8 +24,17 @@ public class ThirdPersonCamera : MonoBehaviour
     public float collisionBuffer = 0.2f; // Буфер от стены
     public float raycastStartOffset = 0.5f; // Отступ от персонажа для начала проверки
 
+    [Header("Distance Smoothing")]
+    public float distanceSmoothSpeed = 8f; // Скорость сглаживания приближения (чем больше - тем быстрее)
+    public float distanceReturnSpeed = 3f; // Скорость возврата к исходному расстоянию (чем меньше - тем плавнее)
+
     [Header("Crosshair Settings")]
     public float crosshairDistance = 100f; // Расстояние прицела от камеры
+
+    [Header("Character Visibility")]
+    public float fadeCompleteDistance = 2.5f; // Расстояние полного исчезновения
+    public float maxViewAngle = 45f; // Максимальный угол обзора персонажа (0 = смотрим прямо на персонажа)
+    public bool fadeCharacter = true; // Включить/выключить исчезновение персонажа
 
     [Header("Debug")]
     public bool showDebug = false; // Показать отладочную информацию
@@ -33,6 +42,9 @@ public class ThirdPersonCamera : MonoBehaviour
     private float rotationX = 0f;
     private float rotationY = 0f;
     private Vector3 crosshairWorldPosition;
+    private float currentSmoothDistance; // Текущее сглаженное расстояние
+    private Renderer[] characterRenderers; // Рендереры персонажа
+    private bool characterVisible = true;
 
     // Публичные свойства для доступа из других скриптов
     public Vector3 CrosshairWorldPosition => crosshairWorldPosition;
@@ -41,11 +53,26 @@ public class ThirdPersonCamera : MonoBehaviour
     void Start()
     {
         Cursor.lockState = CursorLockMode.Locked;
+        currentSmoothDistance = distance; // Инициализируем сглаженное расстояние
 
         // Начальные углы
         Vector3 angles = transform.eulerAngles;
         rotationX = angles.y;
         rotationY = angles.x;
+
+        // Находим все рендереры персонажа
+        if (target != null && fadeCharacter)
+        {
+            characterRenderers = target.GetComponentsInChildren<Renderer>();
+            if (characterRenderers.Length > 0)
+            {
+                Debug.Log($"Найдено {characterRenderers.Length} рендереров для скрытия персонажа");
+            }
+            else
+            {
+                Debug.LogWarning("Рендереры персонажа не найдены!");
+            }
+        }
 
         // ВАЖНО: Убедитесь что слой персонажа НЕ включен в collisionLayers!
         if (target != null && target.gameObject.layer != 0)
@@ -87,18 +114,18 @@ public class ThirdPersonCamera : MonoBehaviour
         Vector3 shoulderPos = rotation * shoulderOffset;
         Vector3 startPos = targetPosition + shoulderPos;
 
-        // Проверка коллизий - МГНОВЕННАЯ без сглаживания
-        float currentDistance = distance;
+        // Проверка коллизий - определяем ЖЕЛАЕМОЕ расстояние
+        float desiredDistance = distance;
 
         // ПЕРВАЯ ПРОВЕРКА: есть ли стена сразу за персонажем?
         RaycastHit directHit;
         if (Physics.Raycast(startPos, direction, out directHit, distance + 0.5f, collisionLayers))
         {
             // Если стена близко к персонажу, используем её расстояние
-            currentDistance = Mathf.Max(directHit.distance - collisionBuffer, minDistance);
+            desiredDistance = Mathf.Max(directHit.distance - collisionBuffer, minDistance);
 
             if (showDebug)
-                Debug.Log($"Прямая коллизия с {directHit.collider.name}, расстояние: {currentDistance}");
+                Debug.Log($"Прямая коллизия с {directHit.collider.name}, желаемое расстояние: {desiredDistance}");
         }
         else
         {
@@ -111,24 +138,83 @@ public class ThirdPersonCamera : MonoBehaviour
             {
                 // Вычисляем финальное расстояние с учетом отступа
                 float hitDistance = raycastStartOffset + hit.distance - collisionBuffer;
-                currentDistance = Mathf.Max(hitDistance, minDistance);
+                desiredDistance = Mathf.Max(hitDistance, minDistance);
 
                 if (showDebug)
-                    Debug.Log($"SphereCast коллизия с {hit.collider.name}, расстояние: {currentDistance}");
+                    Debug.Log($"SphereCast коллизия с {hit.collider.name}, желаемое расстояние: {desiredDistance}");
             }
             else if (showDebug)
             {
-                Debug.Log($"Коллизий нет, расстояние: {currentDistance}");
+                Debug.Log($"Коллизий нет, желаемое расстояние: {desiredDistance}");
             }
         }
 
-        // Позиция камеры - БЕЗ сглаживания, мгновенная
-        Vector3 finalPosition = startPos + direction * currentDistance;
+        // СГЛАЖИВАНИЕ расстояния
+        float smoothSpeed;
+        if (desiredDistance < currentSmoothDistance)
+        {
+            // Приближаемся к стене - быстрее
+            smoothSpeed = distanceSmoothSpeed;
+        }
+        else
+        {
+            // Отдаляемся от стены - медленнее, плавнее
+            smoothSpeed = distanceReturnSpeed;
+        }
+
+        currentSmoothDistance = Mathf.Lerp(currentSmoothDistance, desiredDistance, smoothSpeed * Time.deltaTime);
+
+        // Позиция камеры с использованием сглаженного расстояния
+        Vector3 finalPosition = startPos + direction * currentSmoothDistance;
         transform.position = finalPosition;
         transform.rotation = rotation; // Камера смотрит по направлению поворота (как в RoR2)
 
-        // Вычисляем позицию прицела
+        // Вычисляем позицию прицела (остается без изменений)
         crosshairWorldPosition = transform.position + transform.forward * crosshairDistance;
+
+        // Управление видимостью персонажа
+        if (fadeCharacter && characterRenderers != null && characterRenderers.Length > 0)
+        {
+            UpdateCharacterVisibility();
+        }
+    }
+
+    private void UpdateCharacterVisibility()
+    {
+        // Текущее расстояние камеры
+        float cameraDistance = currentSmoothDistance;
+
+        // Проверяем угол обзора персонажа
+        Vector3 directionToCharacter = (target.position - transform.position).normalized;
+        Vector3 cameraForward = transform.forward;
+        float angleToCharacter = Vector3.Angle(cameraForward, directionToCharacter);
+
+        // ИСПРАВЛЕНО: Персонаж должен быть СКРЫТ если:
+        // 1. Камера слишком близко ИЛИ 2. Угол обзора слишком большой
+        bool shouldBeHidden = cameraDistance < fadeCompleteDistance || angleToCharacter > maxViewAngle;
+        bool shouldBeVisible = !shouldBeHidden;
+
+        if (showDebug)
+        {
+            Debug.Log($"Расстояние: {cameraDistance:F2} (<{fadeCompleteDistance}?), Угол: {angleToCharacter:F1}° (>{maxViewAngle}?), Скрыт: {shouldBeHidden}");
+        }
+
+        if (shouldBeVisible != characterVisible)
+        {
+            characterVisible = shouldBeVisible;
+
+            int processedCount = 0;
+            foreach (Renderer renderer in characterRenderers)
+            {
+                if (renderer != null)
+                {
+                    renderer.enabled = characterVisible;
+                    processedCount++;
+                }
+            }
+
+            Debug.Log($"*** Персонаж {(characterVisible ? "ПОКАЗАН" : "СКРЫТ")} *** расстояние: {cameraDistance:F2}, угол: {angleToCharacter:F1}°, рендереров: {processedCount}");
+        }
     }
 
     // Метод для получения направления стрельбы (для оружия)
@@ -143,63 +229,43 @@ public class ThirdPersonCamera : MonoBehaviour
         return transform.position + GetShootDirection() * distance;
     }
 
-    // Дебаг визуализация
-    void OnDrawGizmosSelected()
+    // Метод для принудительного тестирования скрытия персонажа (для отладки)
+    void Update()
     {
-        if (target == null) return;
-
-        Vector3 targetPosition = target.position + offset + Vector3.up * height;
-        Quaternion rotation = Quaternion.Euler(rotationY, rotationX, 0);
-        Vector3 direction = rotation * Vector3.back;
-        Vector3 shoulderPos = rotation * shoulderOffset;
-        Vector3 startPos = targetPosition + shoulderPos;
-
-        // ПЕРВАЯ ПРОВЕРКА: прямой raycast от персонажа (красная линия)
-        Gizmos.color = Color.red;
-        RaycastHit directHit;
-        if (Physics.Raycast(startPos, direction, out directHit, distance + 0.5f, collisionLayers))
+        // Нажмите клавишу H для принудительного скрытия/показа персонажа (для тестирования)
+        if (Input.GetKeyDown(KeyCode.H) && characterRenderers != null)
         {
-            Gizmos.DrawLine(startPos, directHit.point);
-            Gizmos.DrawWireSphere(directHit.point, 0.2f);
-        }
-        else
-        {
-            Gizmos.DrawLine(startPos, startPos + direction * distance);
+            characterVisible = !characterVisible;
+            int hiddenCount = 0;
+            foreach (Renderer renderer in characterRenderers)
+            {
+                if (renderer != null)
+                {
+                    renderer.enabled = characterVisible;
+                    hiddenCount++;
+                    Debug.Log($"Рендерер {renderer.name}: enabled = {renderer.enabled}");
+                }
+            }
+            Debug.Log($"[ТЕСТ H] Персонаж принудительно {(characterVisible ? "ПОКАЗАН" : "СКРЫТ")}, обработано: {hiddenCount} рендереров");
         }
 
-        // ВТОРАЯ ПРОВЕРКА: SphereCast с отступом (синяя линия)
-        Vector3 raycastStart = startPos + direction * raycastStartOffset;
-        Gizmos.color = Color.green;
-        Gizmos.DrawLine(startPos, raycastStart);
-        Gizmos.DrawWireSphere(raycastStart, 0.1f);
-
-        Gizmos.color = Color.blue;
-        float raycastDistance = distance - raycastStartOffset;
-        if (raycastDistance > 0)
+        // Тест с клавишей G - показать информацию о рендерерах
+        if (Input.GetKeyDown(KeyCode.G) && characterRenderers != null)
         {
-            Gizmos.DrawLine(raycastStart, raycastStart + direction * raycastDistance);
-            Gizmos.DrawWireSphere(raycastStart + direction * raycastDistance, collisionRadius);
+            Debug.Log($"=== ТЕСТ РЕНДЕРЕРОВ ===");
+            Debug.Log($"Найдено рендереров: {characterRenderers.Length}");
+            for (int i = 0; i < characterRenderers.Length; i++)
+            {
+                if (characterRenderers[i] != null)
+                {
+                    Renderer r = characterRenderers[i];
+                    Debug.Log($"  {i}: {r.name} ({r.GetType().Name}) - enabled: {r.enabled}, active: {r.gameObject.activeInHierarchy}");
+                }
+                else
+                {
+                    Debug.Log($"  {i}: NULL рендерер!");
+                }
+            }
         }
-
-        // Текущая позиция камеры (желтая сфера)
-        Gizmos.color = Color.yellow;
-        Gizmos.DrawWireSphere(transform.position, 0.15f);
-
-        // Направление прицела (фиолетовая линия)
-        Gizmos.color = Color.magenta;
-        Gizmos.DrawLine(transform.position, crosshairWorldPosition);
-        Gizmos.DrawWireSphere(crosshairWorldPosition, 0.3f);
-    }
-
-    void OnGUI()
-    {
-        // Простой прицел в центре экрана
-        float crosshairSize = 20f;
-        float centerX = Screen.width * 0.5f;
-        float centerY = Screen.height * 0.5f;
-
-        GUI.color = Color.white;
-        GUI.DrawTexture(new Rect(centerX - 1, centerY - crosshairSize * 0.5f, 2, crosshairSize), Texture2D.whiteTexture);
-        GUI.DrawTexture(new Rect(centerX - crosshairSize * 0.5f, centerY - 1, crosshairSize, 2), Texture2D.whiteTexture);
     }
 }
