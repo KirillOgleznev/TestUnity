@@ -8,6 +8,8 @@ public class CrosshairController : MonoBehaviour
     [SerializeField] private LayerMask aimLayerMask = -1;
     [SerializeField] private float maxAimDistance = 100f;
     [SerializeField] private Transform playerTransform;
+    [SerializeField] private LayerMask enemyLayerMask;
+    [SerializeField] private float enemyOffsetDistance = 2f; // На сколько сместить за врага
 
     [Header("Отладка")]
     [SerializeField] private bool showDebugRay = true;
@@ -50,6 +52,58 @@ public class CrosshairController : MonoBehaviour
             return hit.point;
         }
         return cameraRay.origin + cameraRay.direction * maxAimDistance;
+    }
+
+    public Vector3 GetTargetPointBehindEnemies()
+    {
+        if (playerCamera == null || crosshairUI == null)
+            return Vector3.zero;
+
+        Vector3 crosshairScreenPos;
+        Canvas canvas = crosshairUI.GetComponentInParent<Canvas>();
+        if (canvas != null && canvas.renderMode == RenderMode.ScreenSpaceOverlay)
+        {
+            crosshairScreenPos = crosshairUI.position;
+        }
+        else
+        {
+            crosshairScreenPos = RectTransformUtility.WorldToScreenPoint(playerCamera, crosshairUI.position);
+        }
+
+        Ray cameraRay = playerCamera.ScreenPointToRay(crosshairScreenPos);
+        RaycastHit[] hits = Physics.RaycastAll(cameraRay, maxAimDistance, aimLayerMask);
+
+        System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+
+        foreach (RaycastHit hit in hits)
+        {
+            if (playerTransform != null && hit.transform.IsChildOf(playerTransform))
+                continue;
+
+            // Если попали во врага - смещаем точку за него
+            if (IsInLayerMask(hit.collider.gameObject.layer, enemyLayerMask))
+            {
+                Vector3 offsetPoint = hit.point + cameraRay.direction * enemyOffsetDistance;
+                Debug.DrawLine(hit.point, offsetPoint, Color.yellow, 0.1f); // Показываем смещение
+                return offsetPoint;
+            }
+
+            // Если попали в стену/препятствие - возвращаем как обычно
+            return hit.point;
+        }
+
+        return cameraRay.origin + cameraRay.direction * maxAimDistance;
+    }
+
+    public Vector3 GetDirectionBehindEnemies(Vector3 startPosition)
+    {
+        Vector3 targetPoint = GetTargetPointBehindEnemies();
+        return (targetPoint - startPosition).normalized;
+    }
+
+    private bool IsInLayerMask(int layer, LayerMask layerMask)
+    {
+        return (layerMask.value & (1 << layer)) != 0;
     }
 
     public Vector3 GetDirectionFromPoint(Vector3 startPosition)

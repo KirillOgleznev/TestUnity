@@ -1,6 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
-using Unity.FPS.Game;
+using Unity.FPS.Game; // ОСТАВЛЯЕМ для Damageable
 
 public class FlameDamage : MonoBehaviour
 {
@@ -9,9 +9,9 @@ public class FlameDamage : MonoBehaviour
     public float range = 8f;
 
     [Header("Настройки конуса")]
-    public float coneAngle = 45f; // Угол конуса в градусах (полный угол)
-    public Transform fireDirection; // Направление огня (обычно это сам префаб)
-
+    public float coneAngle = 45f;
+    public Transform fireDirection;
+        
     public LayerMask enemyLayers = -1;
 
     private float damageInterval = 0.1f;
@@ -20,7 +20,6 @@ public class FlameDamage : MonoBehaviour
 
     void Start()
     {
-        // Если направление не задано, используем собственный transform
         if (fireDirection == null)
             fireDirection = transform;
     }
@@ -37,21 +36,15 @@ public class FlameDamage : MonoBehaviour
 
     void FindEnemiesInCone()
     {
-        // Сначала находим всех в радиусе
-        Collider[] colliders = Physics.OverlapSphere(transform.position, range);
-
+        Collider[] colliders = Physics.OverlapSphere(transform.position, range, enemyLayers);
         enemiesInRange.Clear();
 
         foreach (Collider col in colliders)
         {
-            Damageable damageable = col.GetComponent<Damageable>();
-            if (damageable != null)
+            Damageable damageable = col.GetComponent<Damageable>(); // Используем Unity.FPS.Game
+            if (damageable != null && IsInCone(col.transform.position))
             {
-                // Проверяем попадает ли в конус
-                if (IsInCone(col.transform.position))
-                {
-                    enemiesInRange.Add(col.gameObject);
-                }
+                enemiesInRange.Add(col.gameObject);
             }
         }
     }
@@ -60,11 +53,7 @@ public class FlameDamage : MonoBehaviour
     {
         Vector3 directionToTarget = (targetPosition - transform.position).normalized;
         Vector3 fireForward = fireDirection.forward;
-
-        // Вычисляем угол между направлением огня и направлением к цели
         float angle = Vector3.Angle(fireForward, directionToTarget);
-
-        // Проверяем попадает ли в половину угла конуса
         return angle <= coneAngle / 2f;
     }
 
@@ -94,36 +83,41 @@ public class FlameDamage : MonoBehaviour
         }
     }
 
-    // Визуализация конуса в Scene View
+    void OnDrawGizmosSelected()
+    {
+        OnDrawGizmos(); // Показывать только когда объект выбран
+    }
+
     void OnDrawGizmos()
     {
-        if (fireDirection == null) return;
+        if (fireDirection == null && Application.isPlaying) return;
+
+        Transform direction = fireDirection != null ? fireDirection : transform;
 
         Gizmos.color = Color.red;
+        Vector3 forward = direction.forward * range;
 
-        // Рисуем линию направления
-        Vector3 forward = fireDirection.forward * range;
-        Gizmos.DrawLine(transform.position, transform.position + forward);
-
-        // Рисуем границы конуса
-        float halfAngle = coneAngle / 2f;
-
-        Vector3 rightBoundary = Quaternion.AngleAxis(halfAngle, fireDirection.up) * forward;
-        Vector3 leftBoundary = Quaternion.AngleAxis(-halfAngle, fireDirection.up) * forward;
-
-        Gizmos.DrawLine(transform.position, transform.position + rightBoundary);
-        Gizmos.DrawLine(transform.position, transform.position + leftBoundary);
-
-        // Рисуем дугу
-        Gizmos.color = Color.yellow;
-        Vector3 previousPoint = transform.position + rightBoundary;
-        for (int i = 1; i <= 20; i++)
+        // Рисуем несколько "срезов" конуса
+        for (int ring = 0; ring < 4; ring++)
         {
-            float currentAngle = Mathf.Lerp(halfAngle, -halfAngle, i / 20f);
-            Vector3 currentPoint = transform.position +
-                Quaternion.AngleAxis(currentAngle, fireDirection.up) * forward;
-            Gizmos.DrawLine(previousPoint, currentPoint);
-            previousPoint = currentPoint;
+            float ringAngle = (coneAngle / 2f) * (ring + 1) / 4f;
+            float ringRadius = Mathf.Tan(ringAngle * Mathf.Deg2Rad) * range;
+
+            Vector3 ringCenter = transform.position + forward * (ring + 1) / 4f;
+
+            // Рисуем круг для каждого "среза"
+            for (int i = 0; i < 16; i++)
+            {
+                float angle1 = (float)i / 16f * 360f * Mathf.Deg2Rad;
+                float angle2 = (float)(i + 1) / 16f * 360f * Mathf.Deg2Rad;
+
+                Vector3 point1 = ringCenter + direction.right * Mathf.Cos(angle1) * ringRadius +
+                                direction.up * Mathf.Sin(angle1) * ringRadius;
+                Vector3 point2 = ringCenter + direction.right * Mathf.Cos(angle2) * ringRadius +
+                                direction.up * Mathf.Sin(angle2) * ringRadius;
+
+                Gizmos.DrawLine(point1, point2);
+            }
         }
     }
 }

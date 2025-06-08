@@ -5,6 +5,7 @@ using UnityEngine;
 public class OrbitalElementSpheres : MonoBehaviour
 {
     [Header("Sphere References")]
+    [HideInInspector]
     public GameObject[] elementSpheres = new GameObject[3]; // 3 сферы для элементов
     public Transform sphereParent; // Родитель для сфер (если нужен)
 

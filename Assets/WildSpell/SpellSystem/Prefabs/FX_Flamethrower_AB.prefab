@@ -9668,7 +9668,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   damagePerSecond: 10
-  range: 5.82
+  range: 6.06
   coneAngle: 28.2
   fireDirection: {fileID: 4306021370987664604}
   enemyLayers:

@@ -43,14 +43,14 @@ public class SpellElement
 
 public class SpellCaster : MonoBehaviour
 {
+    [Header("Rotation Settings")]
+    [SerializeField] private bool rotatePlayerDuringCast = true;
+    [SerializeField] private float rotationSpeed = 10f;
+
     [Header("References")]
     public Transform spellSpawnPoint;
-    public Transform[] elementSpherePositions = new Transform[3]; // Позиции для UI сфер
-
-    [Header("Spell Settings")]
-    public float baseCastTime = 1.0f;
-    public float castRange = 10f;
-    public LayerMask targetLayers = 1;
+    [SerializeField] private ProjectileShooter projectileShooter;
+    [SerializeField] private Transform playerRoot; // ДОБАВЬ ЭТО
 
     [Header("Available Spells")]
     [SerializeField] private List<BaseSpell> availableSpells = new List<BaseSpell>();
@@ -65,13 +65,16 @@ public class SpellCaster : MonoBehaviour
     public KeyCode cancelKey = KeyCode.Mouse1;
 
     [Header("Events")]
+    [HideInInspector]
     public UnityEvent<bool> OnCastingStateChanged;
+    [HideInInspector]
     public UnityEvent<List<ElementType>> OnElementsChanged;
+    [HideInInspector]
     public UnityEvent<string> OnSpellCasted;
+    [HideInInspector]
     public UnityEvent<BaseSpell> OnSpellFound;
 
-    // Private fields
-    private ThirdPersonController thirdPersonController;
+    public ThirdPersonController thirdPersonController;
     private PlayerInput playerInput;
 
     private List<ElementType> currentElements = new List<ElementType>();
@@ -88,8 +91,10 @@ public class SpellCaster : MonoBehaviour
     void Start()
     {
         // Получаем ссылки на компоненты
-        thirdPersonController = GetComponent<ThirdPersonController>();
         playerInput = GetComponent<PlayerInput>();
+
+        if (projectileShooter == null)
+            projectileShooter = GetComponent<ProjectileShooter>();
 
         // Инициализируем систему заклинаний
         InitializeSpellSystem();
@@ -100,6 +105,27 @@ public class SpellCaster : MonoBehaviour
         HandleElementInput();
         HandleCastInput();
         UpdateCurrentSpell();
+
+        if (isCasting && rotatePlayerDuringCast && projectileShooter != null)
+        {
+            RotatePlayerToTarget();
+        }
+    }
+
+    private void RotatePlayerToTarget()
+    {
+        Vector3 targetDirection = projectileShooter.GetShootDirection();
+
+        targetDirection.y = 0;
+        targetDirection.Normalize();
+
+        if (targetDirection != Vector3.zero && playerRoot != null)
+        {
+            Quaternion targetRotation = Quaternion.LookRotation(targetDirection);
+
+            // ПОВОРАЧИВАЕМ корневой объект персонажа, а не SpellCaster
+            playerRoot.rotation = Quaternion.RotateTowards(playerRoot.rotation, targetRotation, rotationSpeed * Time.deltaTime);
+        }
     }
 
     private void InitializeSpellSystem()
@@ -336,26 +362,29 @@ public class SpellCaster : MonoBehaviour
         isCasting = true;
         OnCastingStateChanged?.Invoke(true);
 
-        // Блокируем движение персонажа во время каста
         if (thirdPersonController != null)
         {
-            // thirdPersonController.SetCanMove(false);
+            thirdPersonController.LockPlayerRotation = true;
         }
 
         Debug.Log($"Casting {currentSpell.SpellName}...");
 
-        // Ждем время каста (если оно больше 0)
         float castTime = Mathf.Max(currentSpell.CastTime, 0.1f);
         yield return new WaitForSeconds(castTime);
 
-        // Выполняем заклинание
-        if (currentSpell != null && isCasting) // Проверяем что кастинг не был прерван
+        if (currentSpell != null && isCasting)
         {
-            currentSpell.Cast(transform, spellSpawnPoint);
+            Vector3 targetDirection = projectileShooter != null ?
+                projectileShooter.GetShootDirection() :
+                transform.forward;
+            Vector3 targetPoint = projectileShooter != null ?
+                projectileShooter.GetTargetPoint() :
+                transform.position + transform.forward * 10f;
+
+            currentSpell.Cast(transform, spellSpawnPoint, targetDirection, targetPoint);
             OnSpellCasted?.Invoke(currentSpell.SpellName);
             Debug.Log($"Successfully cast: {currentSpell.SpellName}");
 
-            // Для мгновенных заклинаний сразу останавливаем кастинг
             if (!(currentSpell is FlamethrowerSpell))
             {
                 StopCasting();
@@ -369,32 +398,26 @@ public class SpellCaster : MonoBehaviour
 
         isCasting = false;
 
-        // Останавливаем текущее заклинание
+        if (thirdPersonController != null)
+        {
+            thirdPersonController.LockPlayerRotation = false;
+        }
+
         if (currentSpell != null)
         {
             currentSpell.StopCasting();
         }
 
-        // Останавливаем корутину
         if (castingCoroutine != null)
         {
             StopCoroutine(castingCoroutine);
             castingCoroutine = null;
         }
 
-        // Очищаем элементы после каста
-        ClearElements();
-
-        // Разблокируем движение
-        if (thirdPersonController != null)
-        {
-            // thirdPersonController.SetCanMove(true);
-        }
-
         OnCastingStateChanged?.Invoke(false);
     }
 
-    private void CancelCasting()
+private void CancelCasting()
     {
         if (!isCasting) return;
 

@@ -152,7 +152,7 @@ ParticleSystem:
       serializedVersion: 2
       minMaxState: 3
       scalar: 25
-      minScalar: 20
+      minScalar: 35.4
       maxCurve:
         serializedVersion: 2
         m_Curve:
@@ -593,7 +593,7 @@ ParticleSystem:
     serializedVersion: 6
     enabled: 1
     type: 4
-    angle: 4
+    angle: 10.2
     length: 5
     boxThickness: {x: 0, y: 0, z: 0}
     radiusThickness: 1
@@ -4982,7 +4982,7 @@ ParticleSystem:
     startSpeed:
       serializedVersion: 2
       minMaxState: 0
-      scalar: 12.185921
+      scalar: 5.2
       minScalar: 5
       maxCurve:
         serializedVersion: 2
@@ -9667,9 +9667,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8514205cfa0014649a9dfbf2c6752838, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  damagePerSecond: 10
-  range: 5.82
-  coneAngle: 28.2
+  damagePerSecond: 50
+  range: 5.27
+  coneAngle: 20.4
   fireDirection: {fileID: 4306021370987664604}
   enemyLayers:
     serializedVersion: 2
@@ -10267,7 +10267,7 @@ ParticleSystem:
     serializedVersion: 6
     enabled: 1
     type: 4
-    angle: 4
+    angle: 6.35
     length: 5
     boxThickness: {x: 0, y: 0, z: 0}
     radiusThickness: 1

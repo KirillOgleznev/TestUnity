@@ -18,13 +18,14 @@ public class ProjectileShooter : MonoBehaviour
     public void Shoot(GameObject projectilePrefab, float speed)
     {
         Vector3 direction = crosshairController.GetDirectionFromPoint(shootPoint.position);
-
         GameObject projectile = Instantiate(projectilePrefab, shootPoint.position, Quaternion.LookRotation(direction));
 
         Projectile advancedProjectile = projectile.GetComponent<Projectile>();
         if (advancedProjectile != null)
         {
-            advancedProjectile.Initialize(direction, speed, gameObject);
+            // Передавай корневой объект игрока, а не компонент
+            GameObject playerRoot = transform.root.gameObject;
+            advancedProjectile.Initialize(direction, speed, playerRoot);
         }
     }
 
