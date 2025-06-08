@@ -10,6 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 3659995153115176982}
   - component: {fileID: 8924682559891268397}
+  - component: {fileID: 450876908531807615}
   m_Layer: 0
   m_Name: Projectile_Blaster
   m_TagString: Untagged
@@ -40,7 +41,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3659995153115176983}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: de99b30e1e73fd14e98cc5371da25d12, type: 3}
   m_Name: 
@@ -64,6 +65,34 @@ MonoBehaviour:
   Damage: 15
   AreaOfDamage: {fileID: 0}
   RadiusColor: {r: 0, g: 1, b: 0.9007921, a: 1}
+--- !u!114 &450876908531807615
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3659995153115176983}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 45e03599650d3de42b9e66ef60a739bb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  Radius: 0.01
+  Root: {fileID: 3659995153115176982}
+  Tip: {fileID: 1135791333161367127}
+  MaxLifeTime: 5
+  ImpactVfx: {fileID: 7655095426451682942, guid: a7d68b1a502e02a49b8efb1b86a8c931,
+    type: 3}
+  ImpactVfxLifetime: 5
+  ImpactVfxSpawnOffset: 0.1
+  ImpactSfxClip: {fileID: 0}
+  HittableLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  Speed: 20
+  GravityDownAcceleration: 0
+  Damage: 20
+  DestructionDelay: 0
 --- !u!1 &5564024855854763701
 GameObject:
   m_ObjectHideFlags: 0

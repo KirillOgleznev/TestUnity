@@ -1,42 +1,40 @@
 using UnityEngine;
-using System.Reflection;
 
 public class ProjectileShooter : MonoBehaviour
 {
     [Header("Настройки стрельбы")]
-    [SerializeField] private CrosshairController crosshair;
-    [SerializeField] private GameObject projectilePrefab;
-    [SerializeField] private Transform firePoint;
+    [SerializeField] private CrosshairController crosshairController;
+    [SerializeField] private Transform shootPoint;
 
     void Start()
     {
-        if (crosshair == null)
-            crosshair = FindObjectOfType<CrosshairController>();
-        if (firePoint == null)
-            firePoint = transform;
+        if (crosshairController == null)
+            crosshairController = FindObjectOfType<CrosshairController>();
+
+        if (shootPoint == null)
+            shootPoint = transform;
     }
 
-    void Update()
+    public void Shoot(GameObject projectilePrefab, float speed)
     {
-        if (Input.GetMouseButtonDown(0))
-            FireProjectile();
-    }
+        Vector3 direction = crosshairController.GetDirectionFromPoint(shootPoint.position);
 
-    void FireProjectile()
-    {
-        if (projectilePrefab == null || crosshair == null) return;
+        GameObject projectile = Instantiate(projectilePrefab, shootPoint.position, Quaternion.LookRotation(direction));
 
-        Vector3 direction = crosshair.GetDirectionFromPoint(firePoint.position);
-
-        GameObject projectile = Instantiate(projectilePrefab, firePoint.position, Quaternion.identity);
-
-        // Запускаем снаряд в нужном направлении
-        var projStandard = projectile.GetComponent<Unity.FPS.Gameplay.ProjectileStandard>();
-        if (projStandard != null)
+        Projectile advancedProjectile = projectile.GetComponent<Projectile>();
+        if (advancedProjectile != null)
         {
-            projStandard.LaunchInDirection(direction);
+            advancedProjectile.Initialize(direction, speed, gameObject);
         }
+    }
 
-        Debug.Log($"Запустили снаряд! Направление: {direction}");
+    public Vector3 GetShootDirection()
+    {
+        return crosshairController.GetDirectionFromPoint(shootPoint.position);
+    }
+
+    public Vector3 GetTargetPoint()
+    {
+        return crosshairController.GetTargetPoint();
     }
 }

@@ -102,8 +102,6 @@ namespace Unity.FPS.AI
         void UpdateCurrentAiState()
         {
             // Handle logic 
-
-            Debug.Log($"AI State: {AiState}, Target: {m_EnemyController.KnownDetectedTarget}");
             switch (AiState)
             {
                 case AIState.Patrol:
