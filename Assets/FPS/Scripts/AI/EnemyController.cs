@@ -200,7 +200,6 @@ namespace Unity.FPS.AI
             }
         }
 
-
         void Update()
         {
             EnsureIsWithinLevelBounds();
