@@ -27,15 +27,15 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1634767862067424}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.99294454, y: -0.031399164, z: -0.079981305, w: -0.081721395}
-  m_LocalPosition: {x: -7.45, y: 2.75, z: -55.32}
+  m_LocalRotation: {x: -0.92745167, y: -0.17755088, z: 0.05137592, w: -0.32506862}
+  m_LocalPosition: {x: 229.503, y: 0.966, z: 1626.789}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 4452672904288642}
   - {fileID: 4691803356102260}
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: -189.048, y: -9.557007, z: -4.380005}
+  m_LocalEulerAnglesHint: {x: -218.405, y: -1.4719849, z: -22.187988}
 --- !u!198 &198637950067575458
 ParticleSystem:
   m_ObjectHideFlags: 0
@@ -1312,7 +1312,7 @@ ParticleSystem:
       maxGradient:
         serializedVersion: 2
         key0: {r: 1, g: 0.9945616, b: 0.9945616, a: 1}
-        key1: {r: 1, g: 0.7688679, b: 0.7688679, a: 1}
+        key1: {r: 0.103773594, g: 0.03206778, b: 0.011258458, a: 1}
         key2: {r: 1, g: 0.7688679, b: 0.7688679, a: 0}
         key3: {r: 0, g: 0, b: 0, a: 0}
         key4: {r: 0, g: 0, b: 0, a: 0}
@@ -1336,7 +1336,7 @@ ParticleSystem:
         atime6: 0
         atime7: 0
         m_Mode: 0
-        m_ColorSpace: -1
+        m_ColorSpace: 0
         m_NumColorKeys: 2
         m_NumAlphaKeys: 3
       minGradient:
@@ -3631,7 +3631,7 @@ ParticleSystem:
         m_NumAlphaKeys: 2
     range: {x: 0, y: 1}
   CollisionModule:
-    enabled: 0
+    enabled: 1
     serializedVersion: 4
     type: 1
     collisionMode: 0
@@ -3649,7 +3649,7 @@ ParticleSystem:
     m_Dampen:
       serializedVersion: 2
       minMaxState: 0
-      scalar: 0.1
+      scalar: 1
       minScalar: 0
       maxCurve:
         serializedVersion: 2
@@ -3755,7 +3755,7 @@ ParticleSystem:
     m_EnergyLossOnCollision:
       serializedVersion: 2
       minMaxState: 0
-      scalar: 0
+      scalar: 0.24
       minScalar: 0
       maxCurve:
         serializedVersion: 2
@@ -3806,13 +3806,13 @@ ParticleSystem:
         m_PostInfinity: 2
         m_RotationOrder: 4
     minKillSpeed: 0
-    maxKillSpeed: 10000
+    maxKillSpeed: 8.73
     radiusScale: 0.25
     collidesWith:
       serializedVersion: 2
       m_Bits: 4294967295
     maxCollisionShapes: 256
-    quality: 0
+    quality: 1
     voxelSize: 0.5
     collisionMessages: 0
     collidesWithDynamic: 1
@@ -14415,7 +14415,6 @@ ParticleSystemRenderer:
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 2100000, guid: 698a8134f4ebbbd4e848648685f68067, type: 2}
-  - {fileID: 0}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
