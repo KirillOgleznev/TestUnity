@@ -3,6 +3,7 @@ using Unity.FPS.Game;
 using UnityEngine;
 using UnityEngine.AI;
 using UnityEngine.Events;
+using System.Collections;
 
 namespace Unity.FPS.AI
 {
@@ -319,11 +320,17 @@ namespace Unity.FPS.AI
             }
         }
 
-        public void SetNavDestination(Vector3 destination)
+        public void SetNavDestination(Vector3 targetPosition)
         {
-            if (NavMeshAgent)
+            NavMeshHit hit;
+            if (NavMesh.SamplePosition(targetPosition, out hit, 10f, NavMesh.AllAreas))
             {
-                NavMeshAgent.SetDestination(destination);
+                NavMeshAgent.SetDestination(hit.position);
+                Debug.DrawLine(transform.position, hit.position, Color.green); // для отладки
+            }
+            else
+            {
+                Debug.LogWarning("[EnemyController] ❌ Не удалось найти достижимую точку рядом с целью");
             }
         }
 
@@ -442,7 +449,19 @@ namespace Unity.FPS.AI
             {
                 OrientTowards(enemyPosition);
 
-                bool didAttack = meleeWeapon.HandleShootInputs(false, true, false);
+                bool didAttack = false;
+
+                // Выбираем стратегию атаки
+                if (meleeWeapon.useAnimationEvents)
+                {
+                    // Если используем Animation Events - более агрессивная атака
+                    didAttack = meleeWeapon.ForceStartAttack();
+                }
+                else
+                {
+                    // Старый метод с проверкой целей
+                    didAttack = meleeWeapon.HandleShootInputs(false, true, false);
+                }
 
                 if (didAttack && onAttack != null)
                 {
@@ -499,13 +518,13 @@ namespace Unity.FPS.AI
                 List<IWeaponController> weaponsList = new List<IWeaponController>();
 
                 // Ищем оригинальные WeaponController
-                var originalWeapons = GetComponentsInChildren<WeaponController>();
+                var originalWeapons = GetComponentsInChildren<Unity.FPS.Game.WeaponController>();
                 foreach (var weapon in originalWeapons)
                 {
                     weaponsList.Add(weapon);
                 }
 
-                // Ищем новые EnemyWeaponController
+                // Ищем новые EnemyWeaponController (с полным namespace)
                 var enemyWeapons = GetComponentsInChildren<EnemyWeaponController>();
                 foreach (var weapon in enemyWeapons)
                 {
@@ -536,6 +555,7 @@ namespace Unity.FPS.AI
                 }
             }
         }
+
 
         public IWeaponController GetCurrentWeapon()
         {

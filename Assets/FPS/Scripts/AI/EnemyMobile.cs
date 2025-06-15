@@ -13,19 +13,27 @@ namespace Unity.FPS.AI
             Attack,
         }
 
+        [Tooltip("Аниматор для управления анимациями врага")]
         public Animator Animator;
 
-        [Tooltip("Fraction of the enemy's attack range at which it will stop moving towards target while attacking")]
+        [Tooltip("Доля от дистанции атаки, на которой враг останавливается при атаке (0.5 = останавливается на половине дистанции)")]
         [Range(0f, 1f)]
         public float AttackStopDistanceRatio = 0.5f;
 
-        [Tooltip("The random hit damage effects")]
+        [Tooltip("Массив эффектов искр при получении урона (выбирается случайный)")]
         public ParticleSystem[] RandomHitSparks;
 
+        [Tooltip("Массив визуальных эффектов при обнаружении цели")]
         public ParticleSystem[] OnDetectVfx;
+
+        [Tooltip("Звук воспроизводимый при обнаружении цели")]
         public AudioClip OnDetectSfx;
 
-        [Header("Sound")] public AudioClip MovementSound;
+        [Header("Звук")]
+        [Tooltip("Звук передвижения врага (проигрывается в цикле)")]
+        public AudioClip MovementSound;
+
+        [Tooltip("Диапазон изменения высоты тона звука движения в зависимости от скорости")]
         public MinMaxFloat PitchDistortionMovementSpeed;
 
         public AIState AiState { get; private set; }
@@ -67,12 +75,12 @@ namespace Unity.FPS.AI
             float moveSpeed = m_EnemyController.NavMeshAgent.velocity.magnitude;
 
             // Update animator speed parameter
-            Animator.SetFloat(k_AnimMoveSpeedParameter, moveSpeed);
+                Animator.SetFloat(k_AnimMoveSpeedParameter, moveSpeed);
 
             // changing the pitch of the movement sound depending on the movement speed
-            m_AudioSource.pitch = Mathf.Lerp(PitchDistortionMovementSpeed.Min, PitchDistortionMovementSpeed.Max,
-                moveSpeed / m_EnemyController.NavMeshAgent.speed);
-        }
+                m_AudioSource.pitch = Mathf.Lerp(PitchDistortionMovementSpeed.Min, PitchDistortionMovementSpeed.Max,
+                    moveSpeed / m_EnemyController.NavMeshAgent.speed);
+                    }
 
         void UpdateAiStateTransitions()
         {
@@ -93,20 +101,34 @@ namespace Unity.FPS.AI
                     if (!m_EnemyController.IsTargetInAttackRange)
                     {
                         AiState = AIState.Follow;
-                    }
+            }
 
                     break;
             }
         }
-
+        private void DebugAgentState()
+        {
+            Debug.Log($"[AGENT DEBUG] " +
+                      $"\nEnabled: {m_EnemyController.NavMeshAgent.enabled}" +
+                      $"\nHasPath: {m_EnemyController.NavMeshAgent.hasPath}" +
+                      $"\nPathPending: {m_EnemyController.NavMeshAgent.pathPending}" +
+                      $"\nPathStatus: {m_EnemyController.NavMeshAgent.pathStatus}" +
+                      $"\nRemainingDistance: {m_EnemyController.NavMeshAgent.remainingDistance:F2}" +
+                      $"\nVelocity: {m_EnemyController.NavMeshAgent.velocity.magnitude:F2}" +
+                      $"\nIsOnNavMesh: {m_EnemyController.NavMeshAgent.isOnNavMesh}" +
+                      $"\nIsStopped: {m_EnemyController.NavMeshAgent.isStopped}" +
+                      $"\nDestination: {m_EnemyController.NavMeshAgent.destination}" +
+                      $"\nPosition: {transform.position}");
+        }
         void UpdateCurrentAiState()
         {
             // Handle logic 
+            DebugAgentState();
             switch (AiState)
             {
                 case AIState.Patrol:
                     m_EnemyController.UpdatePathDestination();
-                    m_EnemyController.SetNavDestination(m_EnemyController.GetDestinationOnPath());
+                        m_EnemyController.SetNavDestination(m_EnemyController.GetDestinationOnPath());
                     break;
                 case AIState.Follow:
                     m_EnemyController.SetNavDestination(m_EnemyController.KnownDetectedTarget.transform.position);
@@ -117,13 +139,13 @@ namespace Unity.FPS.AI
                     if (Vector3.Distance(m_EnemyController.KnownDetectedTarget.transform.position,
                             m_EnemyController.DetectionModule.DetectionSourcePoint.position)
                         >= (AttackStopDistanceRatio * m_EnemyController.DetectionModule.AttackRange))
-                    {
+                        {
                         m_EnemyController.SetNavDestination(m_EnemyController.KnownDetectedTarget.transform.position);
-                    }
-                    else
-                    {
-                        m_EnemyController.SetNavDestination(transform.position);
-                    }
+                        }
+                        else
+                        {
+                            m_EnemyController.SetNavDestination(transform.position);
+                        }
 
                     m_EnemyController.OrientTowards(m_EnemyController.KnownDetectedTarget.transform.position);
                     m_EnemyController.TryAtack(m_EnemyController.KnownDetectedTarget.transform.position);
@@ -173,10 +195,14 @@ namespace Unity.FPS.AI
 
         void OnDamaged()
         {
-            if (RandomHitSparks.Length > 0)
+            // Исправлена ошибка с проверкой массива
+            if (RandomHitSparks != null && RandomHitSparks.Length > 0)
             {
-                int n = Random.Range(0, RandomHitSparks.Length - 1);
-                RandomHitSparks[n].Play();
+                int n = Random.Range(0, RandomHitSparks.Length);
+                if (RandomHitSparks[n] != null)
+                {
+                    RandomHitSparks[n].Play();
+                }
             }
 
             Animator.SetTrigger(k_AnimOnDamagedParameter);
