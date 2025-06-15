@@ -114,8 +114,8 @@ namespace Unity.FPS.AI
         bool m_WasDamagedThisFrame;
         float m_LastTimeWeaponSwapped = Mathf.NegativeInfinity;
         int m_CurrentWeaponIndex;
-        WeaponController m_CurrentWeapon;
-        WeaponController[] m_Weapons;
+        IWeaponController m_CurrentWeapon;
+        IWeaponController[] m_Weapons;
         NavigationModule m_NavigationModule;
 
         // Замени эти методы в EnemyController.cs:
@@ -496,20 +496,34 @@ namespace Unity.FPS.AI
             // Check if we already found and initialized the weapons
             if (m_Weapons == null)
             {
-                // Ищем обычные WeaponController
-                m_Weapons = GetComponentsInChildren<WeaponController>();
+                List<IWeaponController> weaponsList = new List<IWeaponController>();
 
-                // Если нет обычного оружия, создаем пустой массив
-                if (m_Weapons.Length == 0)
+                // Ищем оригинальные WeaponController
+                var originalWeapons = GetComponentsInChildren<WeaponController>();
+                foreach (var weapon in originalWeapons)
                 {
-                    m_Weapons = new WeaponController[0];
+                    weaponsList.Add(weapon);
                 }
-                else
+
+                // Ищем новые EnemyWeaponController
+                var enemyWeapons = GetComponentsInChildren<EnemyWeaponController>();
+                foreach (var weapon in enemyWeapons)
                 {
-                    // Если есть обычное оружие, инициализируем его
-                    for (int i = 0; i < m_Weapons.Length; i++)
+                    weaponsList.Add(weapon);
+                }
+
+                // Преобразуем список в массив
+                m_Weapons = weaponsList.ToArray();
+
+                Debug.Log($"[EnemyController] Найдено оружия: {m_Weapons.Length}");
+
+                // Инициализируем найденное оружие
+                for (int i = 0; i < m_Weapons.Length; i++)
+                {
+                    if (m_Weapons[i] != null)
                     {
                         m_Weapons[i].Owner = gameObject;
+                        Debug.Log($"[EnemyController] Инициализировано оружие #{i}: {m_Weapons[i].GetType().Name}");
                     }
                 }
 
@@ -518,11 +532,12 @@ namespace Unity.FPS.AI
                 if (meleeWeapon != null)
                 {
                     meleeWeapon.Owner = gameObject;
+                    Debug.Log($"[EnemyController] Найдено милишное оружие: {meleeWeapon.name}");
                 }
             }
         }
 
-        public WeaponController GetCurrentWeapon()
+        public IWeaponController GetCurrentWeapon()
         {
             FindAndInitializeAllWeapons();
 
@@ -536,7 +551,6 @@ namespace Unity.FPS.AI
                     SetCurrentWeapon(0);
                 }
 
-                DebugUtility.HandleErrorIfNullGetComponent<WeaponController, EnemyController>(m_CurrentWeapon, this, gameObject);
                 return m_CurrentWeapon;
             }
 

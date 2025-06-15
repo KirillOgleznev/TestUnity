@@ -3,6 +3,28 @@ using UnityEngine.Events;
 
 namespace Unity.FPS.Game
 {
+    public interface IWeaponController
+    {
+        // Основные свойства
+        GameObject Owner { get; set; }
+        GameObject SourcePrefab { get; set; }
+        Vector3 MuzzleWorldVelocity { get; }
+        float CurrentCharge { get; }
+        bool IsCharging { get; }
+        bool IsWeaponActive { get; }
+
+        // Дополнительные свойства для ИИ
+        Transform WeaponMuzzle { get; }
+        GameObject WeaponRoot { get; }
+        Transform transform { get; }
+
+        // Методы для ИИ
+        void ShowWeapon(bool show);
+        bool HandleShootInputs(bool inputDown, bool inputHeld, bool inputUp);
+        //bool CanShoot();
+        int GetCurrentAmmo();
+    }
+
     public abstract class ProjectileBase : MonoBehaviour
     {
         public GameObject Owner { get; private set; }
@@ -13,7 +35,7 @@ namespace Unity.FPS.Game
 
         public UnityAction OnShoot;
 
-        public void Shoot(WeaponController controller)
+        public void Shoot(IWeaponController controller)
         {
             Owner = controller.Owner;
             InitialPosition = transform.position;

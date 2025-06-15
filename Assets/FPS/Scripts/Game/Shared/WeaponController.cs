@@ -26,7 +26,7 @@ namespace Unity.FPS.Game
     }
 
     [RequireComponent(typeof(AudioSource))]
-    public class WeaponController : MonoBehaviour
+    public class WeaponController : MonoBehaviour, IWeaponController
     {
         [Header("Information")] [Tooltip("The name that will be displayed in the UI for this weapon")]
         public string WeaponName;
@@ -163,6 +163,20 @@ namespace Unity.FPS.Game
 
         private Queue<Rigidbody> m_PhysicalAmmoPool;
 
+        Transform IWeaponController.WeaponMuzzle 
+{ 
+    get { return WeaponMuzzle; } 
+}
+
+GameObject IWeaponController.WeaponRoot 
+{ 
+    get { return WeaponRoot; } 
+}
+
+Transform IWeaponController.transform 
+{ 
+    get { return transform; } 
+}
         void Awake()
         {
             m_CurrentAmmo = MaxAmmo;
