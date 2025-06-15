@@ -166,8 +166,6 @@ public class SpellCaster : MonoBehaviour
                 }
             }
         }
-
-        Debug.Log($"Initialized {spellLookup.Count} spell combinations");
     }
 
     private List<List<ElementType>> GetAllPermutations(List<ElementType> elements)

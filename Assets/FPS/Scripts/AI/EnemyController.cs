@@ -118,6 +118,8 @@ namespace Unity.FPS.AI
         WeaponController[] m_Weapons;
         NavigationModule m_NavigationModule;
 
+        // Замени эти методы в EnemyController.cs:
+
         void Start()
         {
             m_EnemyManager = FindObjectOfType<EnemyManager>();
@@ -144,16 +146,21 @@ namespace Unity.FPS.AI
             m_Health.OnDie += OnDie;
             m_Health.OnDamaged += OnDamaged;
 
-            // Find and initialize all weapons
+            // Find and initialize all weapons (ИСПРАВЛЕНО)
             FindAndInitializeAllWeapons();
-            var weapon = GetCurrentWeapon();
-            weapon.ShowWeapon(true);
+
+            // Показываем оружие только если оно есть (ИСПРАВЛЕНО)
+            if (HasAnyWeapon())
+            {
+                var weapon = GetCurrentWeapon();
+                if (weapon != null)
+                    weapon.ShowWeapon(true);
+            }
 
             var detectionModules = GetComponentsInChildren<DetectionModule>();
-            DebugUtility.HandleErrorIfNoComponentFound<DetectionModule, EnemyController>(detectionModules.Length, this,
-                gameObject);
-            DebugUtility.HandleWarningIfDuplicateObjects<DetectionModule, EnemyController>(detectionModules.Length,
-                this, gameObject);
+            DebugUtility.HandleErrorIfNoComponentFound<DetectionModule, EnemyController>(detectionModules.Length, this, gameObject);
+            DebugUtility.HandleWarningIfDuplicateObjects<DetectionModule, EnemyController>(detectionModules.Length, this, gameObject);
+
             // Initialize detection module
             DetectionModule = detectionModules[0];
             DetectionModule.onDetectedTarget += OnDetectedTarget;
@@ -161,8 +168,8 @@ namespace Unity.FPS.AI
             onAttack += DetectionModule.OnAttack;
 
             var navigationModules = GetComponentsInChildren<NavigationModule>();
-            DebugUtility.HandleWarningIfDuplicateObjects<DetectionModule, EnemyController>(detectionModules.Length,
-                this, gameObject);
+            DebugUtility.HandleWarningIfDuplicateObjects<DetectionModule, EnemyController>(detectionModules.Length, this, gameObject);
+
             // Override navmesh agent data
             if (navigationModules.Length > 0)
             {
@@ -195,8 +202,7 @@ namespace Unity.FPS.AI
             {
                 m_EyeColorMaterialPropertyBlock = new MaterialPropertyBlock();
                 m_EyeColorMaterialPropertyBlock.SetColor("_EmissionColor", DefaultEyeColor);
-                m_EyeRendererData.Renderer.SetPropertyBlock(m_EyeColorMaterialPropertyBlock,
-                    m_EyeRendererData.MaterialIndex);
+                m_EyeRendererData.Renderer.SetPropertyBlock(m_EyeColorMaterialPropertyBlock, m_EyeRendererData.MaterialIndex);
             }
         }
 
@@ -214,6 +220,12 @@ namespace Unity.FPS.AI
             }
 
             m_WasDamagedThisFrame = false;
+        }
+
+        private bool HasAnyWeapon()
+        {
+            var meleeWeapon = GetComponentInChildren<MeleeWeaponController>();
+            return (m_Weapons != null && m_Weapons.Length > 0) || meleeWeapon != null;
         }
 
         void EnsureIsWithinLevelBounds()
@@ -396,11 +408,26 @@ namespace Unity.FPS.AI
 
         public void OrientWeaponsTowards(Vector3 lookPosition)
         {
-            for (int i = 0; i < m_Weapons.Length; i++)
+            // Поворачиваем обычное оружие
+            if (m_Weapons != null)
             {
-                // orient weapon towards player
-                Vector3 weaponForward = (lookPosition - m_Weapons[i].WeaponRoot.transform.position).normalized;
-                m_Weapons[i].transform.forward = weaponForward;
+                for (int i = 0; i < m_Weapons.Length; i++)
+                {
+                    if (m_Weapons[i] != null && m_Weapons[i].WeaponRoot != null)
+                    {
+                        // orient weapon towards player
+                        Vector3 weaponForward = (lookPosition - m_Weapons[i].WeaponRoot.transform.position).normalized;
+                        m_Weapons[i].transform.forward = weaponForward;
+                    }
+                }
+            }
+
+            // Поворачиваем милишное оружие
+            var meleeWeapon = GetComponentInChildren<MeleeWeaponController>();
+            if (meleeWeapon != null)
+            {
+                Vector3 direction = (lookPosition - meleeWeapon.transform.position).normalized;
+                meleeWeapon.transform.forward = direction;
             }
         }
 
@@ -409,26 +436,49 @@ namespace Unity.FPS.AI
             if (m_GameFlowManager.GameIsEnding)
                 return false;
 
-            OrientWeaponsTowards(enemyPosition);
-
-            if ((m_LastTimeWeaponSwapped + DelayAfterWeaponSwap) >= Time.time)
-                return false;
-
-            // Shoot the weapon
-            bool didFire = GetCurrentWeapon().HandleShootInputs(false, true, false);
-
-            if (didFire && onAttack != null)
+            // Сначала проверяем милишное оружие
+            var meleeWeapon = GetComponentInChildren<MeleeWeaponController>();
+            if (meleeWeapon != null)
             {
-                onAttack.Invoke();
+                OrientTowards(enemyPosition);
 
-                if (SwapToNextWeapon && m_Weapons.Length > 1)
+                bool didAttack = meleeWeapon.HandleShootInputs(false, true, false);
+
+                if (didAttack && onAttack != null)
                 {
-                    int nextWeaponIndex = (m_CurrentWeaponIndex + 1) % m_Weapons.Length;
-                    SetCurrentWeapon(nextWeaponIndex);
+                    onAttack.Invoke();
                 }
+
+                return didAttack;
             }
 
-            return didFire;
+            // Если милишного оружия нет, используем обычное (если есть)
+            var currentWeapon = GetCurrentWeapon();
+            if (currentWeapon != null)
+            {
+                OrientWeaponsTowards(enemyPosition);
+
+                if ((m_LastTimeWeaponSwapped + DelayAfterWeaponSwap) >= Time.time)
+                    return false;
+
+                bool didFire = currentWeapon.HandleShootInputs(false, true, false);
+
+                if (didFire && onAttack != null)
+                {
+                    onAttack.Invoke();
+
+                    if (SwapToNextWeapon && m_Weapons.Length > 1)
+                    {
+                        int nextWeaponIndex = (m_CurrentWeaponIndex + 1) % m_Weapons.Length;
+                        SetCurrentWeapon(nextWeaponIndex);
+                    }
+                }
+
+                return didFire;
+            }
+
+            // Если вообще нет оружия
+            return false;
         }
 
         public bool TryDropItem()
@@ -446,13 +496,28 @@ namespace Unity.FPS.AI
             // Check if we already found and initialized the weapons
             if (m_Weapons == null)
             {
+                // Ищем обычные WeaponController
                 m_Weapons = GetComponentsInChildren<WeaponController>();
-                DebugUtility.HandleErrorIfNoComponentFound<WeaponController, EnemyController>(m_Weapons.Length, this,
-                    gameObject);
 
-                for (int i = 0; i < m_Weapons.Length; i++)
+                // Если нет обычного оружия, создаем пустой массив
+                if (m_Weapons.Length == 0)
                 {
-                    m_Weapons[i].Owner = gameObject;
+                    m_Weapons = new WeaponController[0];
+                }
+                else
+                {
+                    // Если есть обычное оружие, инициализируем его
+                    for (int i = 0; i < m_Weapons.Length; i++)
+                    {
+                        m_Weapons[i].Owner = gameObject;
+                    }
+                }
+
+                // Инициализируем милишное оружие отдельно
+                var meleeWeapon = GetComponentInChildren<MeleeWeaponController>();
+                if (meleeWeapon != null)
+                {
+                    meleeWeapon.Owner = gameObject;
                 }
             }
         }
@@ -460,23 +525,37 @@ namespace Unity.FPS.AI
         public WeaponController GetCurrentWeapon()
         {
             FindAndInitializeAllWeapons();
-            // Check if no weapon is currently selected
-            if (m_CurrentWeapon == null)
+
+            // Если есть обычное оружие
+            if (m_Weapons != null && m_Weapons.Length > 0)
             {
-                // Set the first weapon of the weapons list as the current weapon
-                SetCurrentWeapon(0);
+                // Check if no weapon is currently selected
+                if (m_CurrentWeapon == null)
+                {
+                    // Set the first weapon of the weapons list as the current weapon
+                    SetCurrentWeapon(0);
+                }
+
+                DebugUtility.HandleErrorIfNullGetComponent<WeaponController, EnemyController>(m_CurrentWeapon, this, gameObject);
+                return m_CurrentWeapon;
             }
 
-            DebugUtility.HandleErrorIfNullGetComponent<WeaponController, EnemyController>(m_CurrentWeapon, this,
-                gameObject);
-
-            return m_CurrentWeapon;
+            // Если нет обычного оружия, возвращаем null (будем использовать милишное)
+            return null;
         }
 
         void SetCurrentWeapon(int index)
         {
+            // Проверяем границы массива
+            if (m_Weapons == null || m_Weapons.Length == 0 || index < 0 || index >= m_Weapons.Length)
+            {
+                m_CurrentWeapon = null;
+                return;
+            }
+
             m_CurrentWeaponIndex = index;
             m_CurrentWeapon = m_Weapons[m_CurrentWeaponIndex];
+
             if (SwapToNextWeapon)
             {
                 m_LastTimeWeaponSwapped = Time.time;
